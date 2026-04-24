@@ -57,6 +57,9 @@ src
 ├─ routes/
 │   ├─ analysisRoutes.ts # POST /analysis endpoint to create workflows
 │
+├─ types/
+│   └─ index.ts                 # Shared enums: TaskStatus
+│
 ├─ data-source.ts       # TypeORM DataSource configuration
 └─ index.ts             # Express.js server initialization & starting the worker
 ```
@@ -154,8 +157,48 @@ src
     - `TaskRunner` runs the corresponding job (e.g., data analysis, email notification) and updates states.
     - Once tasks are done, the workflow is marked as `completed`.
 
+## Testing
 
-### **Coding Challenge Tasks for the Interviewee**
+The project uses [Jest](https://jestjs.io/) with [ts-jest](https://kulshekhar.github.io/ts-jest/) for unit testing.
+
+### Run all tests
+```bash
+npm test
+```
+
+### Watch mode (re-runs on file changes)
+```bash
+npm run test:watch
+```
+
+### Run a specific test file
+```bash
+npx jest src/__tests__/PolygonAreaJob.test.ts
+```
+
+### Coverage report
+```bash
+npx jest --coverage
+```
+
+To scope coverage to a specific file:
+```bash
+npx jest src/__tests__/PolygonAreaJob.test.ts --coverage --collectCoverageFrom='src/jobs/PolygonAreaJob.ts'
+```
+
+### Test structure
+```
+src/__tests__/
+├─ helpers/
+│   └─ fixtures.ts              # Shared factory helpers (makeTask, makeWorkflow, etc)
+├─ PolygonAreaJob.test.ts       # Unit tests for PolygonAreaJob (100% coverage)
+```
+
+### Adding a new Job
+When adding a new `Job` implementation, place its tests in `src/__tests__/<JobName>.test.ts` and follow the same pattern:
+- Use `makeTask()` from `helpers/fixtures.ts` to create test tasks
+- Test the happy path with real inputs (no mocking of pure computation jobs)
+- Test all error/invalid-input branches to achieve full branch coverage
 
 The following tasks must be completed to enhance the backend system:
 

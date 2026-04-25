@@ -1,6 +1,6 @@
 import { Task } from '../../models/Task';
 import { Workflow } from '../../models/Workflow';
-import { TaskStatus } from '../../workers/taskRunner';
+import { TaskStatus, TaskType } from '../../types';
 
 export const DUMMY_GEO_JSON = JSON.stringify({ type: 'Point', coordinates: [0, 0] });
 
@@ -13,7 +13,7 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
         clientId: 'client-1',
         geoJson: DUMMY_GEO_JSON,
         status: TaskStatus.Queued,
-        taskType: 'analysis',
+        taskType: TaskType.Analysis,
         stepNumber: 1,
         dependsOnTaskId: null,
         workflow: { workflowId: WORKFLOW_ID } as Workflow,

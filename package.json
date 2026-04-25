@@ -3,6 +3,8 @@
     "start": "ts-node src/index.ts",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
     "test": "jest",
+    "test:unit": "jest --selectProjects unit",
+    "test:integration": "jest --selectProjects integration",
     "test:watch": "jest --watch"
   },
   "dependencies": {

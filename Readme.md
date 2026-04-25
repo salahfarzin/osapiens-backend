@@ -57,8 +57,11 @@ src
 ├─ routes/
 │   ├─ analysisRoutes.ts # POST /analysis endpoint to create workflows
 │
-├─ types/
-│   └─ index.ts                 # Shared enums: TaskStatus
+├── types/
+│   ├── index.ts                 # Barrel export for all shared types
+│   ├── TaskStatus.ts            # enum TaskStatus
+│   ├── WorkflowStatus.ts        # enum WorkflowStatus
+│   └── TaskType.ts              # const TaskType + type alias
 │
 ├─ data-source.ts       # TypeORM DataSource configuration
 └─ index.ts             # Express.js server initialization & starting the worker
@@ -150,48 +153,58 @@ src
     }'
    ```
 
-   This will read the configured workflow YAML, create a workflow and tasks, and queue them for processing.
+**Response:**
+```json
+{ "workflowId": "<uuid>", "message": "Workflow created and tasks queued." }
+```
 
-4. **Check Logs:**
-    - The worker picks up tasks from `queued` state.
-    - `TaskRunner` runs the corresponding job (e.g., data analysis, email notification) and updates states.
-    - Once tasks are done, the workflow is marked as `completed`.
+Tasks are picked up asynchronously by the background worker. The worker updates task and workflow statuses as jobs complete.
+
+### Workflow YAML Format
+
+```yaml
+name: "example_workflow"
+steps:
+  - taskType: "analysis"
+    stepNumber: 1
+  - taskType: "notification"
+    stepNumber: 2
+  - taskType: "polygon"
+    stepNumber: 3
+  - taskType: "report"
+    stepNumber: 4
+```
+
+Available `taskType` values: `analysis`, `notification`, `polygon`, `report`.
 
 ## Testing
 
-The project uses [Jest](https://jestjs.io/) with [ts-jest](https://kulshekhar.github.io/ts-jest/) for unit testing.
+The project uses [Jest](https://jestjs.io/) with [ts-jest](https://kulshekhar.github.io/ts-jest/).
 
-### Run all tests
-```bash
-npm test
-```
+### Commands
 
-### Watch mode (re-runs on file changes)
-```bash
-npm run test:watch
-```
+| Command | Description |
+|---|---|
+| `npm test` | Run all tests (unit + integration) |
+| `npm run test:unit` | Unit tests only (fast, no database) |
+| `npm run test:integration` | Integration tests only (in-memory SQLite) |
+| `npm run test:watch` | Watch mode — re-run on file changes |
+| `npm test -- --coverage` | Full coverage report |
 
-### Run a specific test file
-```bash
-npx jest src/__tests__/PolygonAreaJob.test.ts
-```
+### Test Structure
 
-### Coverage report
-```bash
-npx jest --coverage
-```
 
-To scope coverage to a specific file:
-```bash
-npx jest src/__tests__/PolygonAreaJob.test.ts --coverage --collectCoverageFrom='src/jobs/PolygonAreaJob.ts'
-```
-
-### Test structure
 ```
 src/__tests__/
-├─ helpers/
-│   └─ fixtures.ts              # Shared factory helpers (makeTask, makeWorkflow, etc)
-├─ PolygonAreaJob.test.ts       # Unit tests for PolygonAreaJob (100% coverage)
+├── unit/
+│   ├── PolygonAreaJob.test.ts             # Unit tests for PolygonAreaJob
+│   └── ReportGenerationJob.test.ts        # Unit tests for ReportGenerationJob
+├── integration/
+│   └── ReportGenerationJob.integration.test.ts  # Integration tests against in-memory SQLite
+└── helpers/
+    ├── fixtures.ts    # In-memory object builders for unit tests (no DB)
+    ├── seeds.ts       # DB seed functions for integration tests
+    └── testDb.ts      # Reusable DB lifecycle hooks (useTestDatabase, getDataSource)
 ```
 
 ### Adding a new Job

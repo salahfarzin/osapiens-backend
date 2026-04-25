@@ -1,5 +1,5 @@
-import { PolygonAreaJob } from '../jobs/PolygonAreaJob';
-import { makeTask } from './helpers/fixtures';
+import { PolygonAreaJob } from '../../jobs/PolygonAreaJob';
+import { makeTask } from '../helpers/fixtures';
 
 const BRAZIL_POLYGON_JSON = JSON.stringify({
     type: 'Polygon',

@@ -1,10 +1,29 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
-    testEnvironment: 'node',
-    roots: ['<rootDir>/src'],
-    testMatch: ['**/__tests__/**/*.test.ts'],
-    clearMocks: true,
-    transform: {
-        '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],
-    },
+    collectCoverageFrom: [
+        'src/**/*.ts',
+        '!src/__tests__/**',
+    ],
+    projects: [
+        {
+            displayName: 'unit',
+            testEnvironment: 'node',
+            roots: ['<rootDir>/src'],
+            testMatch: ['**/__tests__/unit/**/*.test.ts'],
+            clearMocks: true,
+            transform: {
+                '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],
+            },
+        },
+        {
+            displayName: 'integration',
+            testEnvironment: 'node',
+            roots: ['<rootDir>/src'],
+            testMatch: ['**/__tests__/integration/**/*.test.ts'],
+            clearMocks: true,
+            transform: {
+                '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],
+            },
+        },
+    ],
 };

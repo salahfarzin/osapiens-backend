@@ -2,11 +2,14 @@ import { Job } from './Job';
 import { DataAnalysisJob } from './DataAnalysisJob';
 import { EmailNotificationJob } from './EmailNotificationJob';
 import { PolygonAreaJob } from './PolygonAreaJob';
+import { ReportGenerationJob } from './ReportGenerationJob';
+import { TaskType } from '../types';
 
 const jobMap: Record<string, () => Job> = {
-    'analysis': () => new DataAnalysisJob(),
-    'notification': () => new EmailNotificationJob(),
-    'polygon': () => new PolygonAreaJob(),
+    [TaskType.Analysis]: () => new DataAnalysisJob(),
+    [TaskType.Notification]: () => new EmailNotificationJob(),
+    [TaskType.PolygonArea]: () => new PolygonAreaJob(),
+    [TaskType.Report]: () => new ReportGenerationJob(),
 };
 
 export function getJobForTaskType(taskType: string): Job {

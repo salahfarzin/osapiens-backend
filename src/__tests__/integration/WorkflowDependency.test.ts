@@ -25,7 +25,11 @@ describe('Task dependency chain (integration)', () => {
             geoJson: POLYGON_GEO_JSON,
         });
 
-        const runner = new TaskRunner(ds.getRepository(Task));
+        const runner = new TaskRunner(
+            ds.getRepository(Task),
+            ds.getRepository(Result),
+            ds.getRepository(Workflow),
+        );
         await runner.run(await fetchTask(ds, task1.taskId));
         await runner.run(await fetchTask(ds, task2.taskId));
 
@@ -56,7 +60,11 @@ describe('Task dependency chain (integration)', () => {
             geoJson: POLYGON_GEO_JSON,
         });
 
-        const runner = new TaskRunner(ds.getRepository(Task));
+        const runner = new TaskRunner(
+            ds.getRepository(Task),
+            ds.getRepository(Result),
+            ds.getRepository(Workflow),
+        );
         await runner.run(await fetchTask(ds, task1.taskId));
 
         const savedResult = await ds.getRepository(Result).findOneOrFail({ where: { taskId: task1.taskId } });

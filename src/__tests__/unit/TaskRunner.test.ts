@@ -36,15 +36,13 @@ describe('TaskRunner', () => {
 
         mockTaskRepo = {
             save: jest.fn().mockImplementation(async (t: Task) => t),
-            manager: {
-                getRepository: jest.fn().mockImplementation((entity: unknown) => {
-                    if (entity === Result) return mockResultRepo;
-                    if (entity === Workflow) return mockWorkflowRepo;
-                }),
-            },
         } as unknown as Repository<Task>;
 
-        runner = new TaskRunner(mockTaskRepo);
+        runner = new TaskRunner(
+            mockTaskRepo,
+            mockResultRepo as unknown as Repository<Result>,
+            mockWorkflowRepo as unknown as Repository<Workflow>,
+        );
     });
 
     describe('dependency resolution', () => {
@@ -53,7 +51,8 @@ describe('TaskRunner', () => {
 
             await runner.run(task);
 
-            expect(mockResultRepo.findOne).not.toHaveBeenCalled();
+            expect(mockResultRepo.findOne).toHaveBeenCalledTimes(1);
+            expect(mockResultRepo.findOne).toHaveBeenCalledWith({ where: { taskId: DUMMY_TASK_ID } });
             expect(mockJob.run).toHaveBeenCalledWith(task, undefined);
         });
 
@@ -172,6 +171,101 @@ describe('TaskRunner', () => {
             await expect(runner.run(makeTask())).rejects.toThrow();
 
             expect(mockWorkflowRepo.save).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('finalResult aggregation', () => {
+        it('saves finalResult when all tasks complete', async () => {
+            const taskOutput = { country: 'Brazil' };
+            mockResultRepo.findOne.mockResolvedValue({
+                resultId: 'result-uuid',
+                taskId: DUMMY_TASK_ID,
+                data: JSON.stringify(taskOutput),
+            });
+            mockWorkflowRepo.findOne.mockResolvedValue(
+                makeWorkflow([{ taskId: DUMMY_TASK_ID, status: TaskStatus.Completed }])
+            );
+
+            await runner.run(makeTask());
+
+            const savedWorkflow = (mockWorkflowRepo.save).mock.calls[0][0];
+            const finalResult = JSON.parse(savedWorkflow.finalResult);
+            expect(finalResult.tasks).toHaveLength(1);
+            expect(finalResult.tasks[0]).toMatchObject({
+                taskId: DUMMY_TASK_ID,
+                status: TaskStatus.Completed,
+                output: taskOutput,
+            });
+        });
+
+        it('saves finalResult with null output for tasks that have no result row', async () => {
+            mockResultRepo.findOne.mockResolvedValue(null);
+            mockWorkflowRepo.findOne.mockResolvedValue(
+                makeWorkflow([{ taskId: DUMMY_TASK_ID, status: TaskStatus.Completed }])
+            );
+
+            await runner.run(makeTask());
+
+            const savedWorkflow = (mockWorkflowRepo.save).mock.calls[0][0];
+            const finalResult = JSON.parse(savedWorkflow.finalResult);
+            expect(finalResult.tasks[0].output).toBeNull();
+        });
+
+        it('saves finalResult including failed task entries when workflow fails', async () => {
+            mockResultRepo.findOne.mockResolvedValue(null);
+            mockWorkflowRepo.findOne.mockResolvedValue(
+                makeWorkflow([
+                    { taskId: DUMMY_TASK_ID, status: TaskStatus.Completed },
+                    { taskId: 'sibling-task', status: TaskStatus.Failed },
+                ])
+            );
+
+            await runner.run(makeTask());
+
+            const savedWorkflow = (mockWorkflowRepo.save).mock.calls[0][0];
+            const finalResult = JSON.parse(savedWorkflow.finalResult);
+            expect(finalResult.tasks).toHaveLength(2);
+            expect(finalResult.tasks.some((t: { status: string }) => t.status === TaskStatus.Failed)).toBe(true);
+        });
+
+        it('includes taskId, taskType, stepNumber, status, and output for each task', async () => {
+            const taskOutput = { area: 42 };
+            mockResultRepo.findOne.mockResolvedValue({
+                resultId: 'result-uuid',
+                taskId: DUMMY_TASK_ID,
+                data: JSON.stringify(taskOutput),
+            });
+            mockWorkflowRepo.findOne.mockResolvedValue(
+                makeWorkflow([{ taskId: DUMMY_TASK_ID, status: TaskStatus.Completed }])
+            );
+
+            await runner.run(makeTask());
+
+            const savedWorkflow = (mockWorkflowRepo.save).mock.calls[0][0];
+            const finalResult = JSON.parse(savedWorkflow.finalResult);
+            expect(finalResult.tasks[0]).toEqual(
+                expect.objectContaining({
+                    taskId: DUMMY_TASK_ID,
+                    taskType: expect.any(String),
+                    stepNumber: expect.any(Number),
+                    status: TaskStatus.Completed,
+                    output: taskOutput,
+                })
+            );
+        });
+
+        it('does not set finalResult when the workflow is still in progress', async () => {
+            mockWorkflowRepo.findOne.mockResolvedValue(
+                makeWorkflow([
+                    { taskId: DUMMY_TASK_ID, status: TaskStatus.Completed },
+                    { taskId: 'other-task', status: TaskStatus.Queued },
+                ])
+            );
+
+            await runner.run(makeTask());
+
+            const savedWorkflow = (mockWorkflowRepo.save).mock.calls[0][0];
+            expect(savedWorkflow.finalResult).toBeUndefined();
         });
     });
 });

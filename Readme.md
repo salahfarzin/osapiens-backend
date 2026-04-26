@@ -62,7 +62,7 @@ src
 │
 ├── routes/
 │   ├── analysisRoutes.ts        # POST /analysis
-│   ├── workflowRoutes.ts        # GET  /workflow/:id/status
+│   ├── workflowRoutes.ts        # GET  /workflow/:id/status, GET /workflow/:id/results
 │   ├── healthRoutes.ts          # GET  /health
 │   └── defaultRoute.ts          # GET  / (renders README)
 │
@@ -116,7 +116,7 @@ The raw OpenAPI spec is available at **http://localhost:3000/docs.json**.
 
 ## API Reference
 
-### `POST /analysis`
+### `POST /api/v1/analysis`
 
 Creates a new workflow from the default YAML definition and queues all tasks for async processing.
 
@@ -147,7 +147,7 @@ Creates a new workflow from the default YAML definition and queues all tasks for
 
 **curl example:**
 ```bash
-curl -X POST http://localhost:3000/analysis \
+curl -X POST http://localhost:3000/api/v1/analysis \
   -H "Content-Type: application/json" \
   -d '{
     "clientId": "client123",
@@ -166,11 +166,11 @@ curl -X POST http://localhost:3000/analysis \
 
 ---
 
-### `GET /workflow/:id/status`
+### `GET /api/v1/workflow/:id/status`
 
 Returns the current status of a workflow, including the count of completed and total tasks.
 
-**Path parameter:** `id` — the `workflowId` UUID returned by `POST /analysis`.
+**Path parameter:** `id` — the `workflowId` UUID returned by `POST /api/v1/analysis`.
 
 **Response `200`:**
 ```json
@@ -195,7 +195,39 @@ Returns the current status of a workflow, including the count of completed and t
 
 **curl example:**
 ```bash
-curl http://localhost:3000/workflow/3433c76d-f226-4c91-afb5-7dfc7accab24/status
+curl http://localhost:3000/api/v1/workflow/3433c76d-f226-4c91-afb5-7dfc7accab24/status
+```
+
+---
+
+### `GET /api/v1/workflow/:id/results`
+
+Returns the final aggregated result of a completed workflow.
+
+**Path parameter:** `id` — the `workflowId` UUID returned by `POST /api/v1/analysis`.
+
+**Response `200`:**
+```json
+{
+  "workflowId": "3433c76d-f226-4c91-afb5-7dfc7accab24",
+  "status": "completed",
+  "finalResult": "Aggregated workflow results go here"
+}
+```
+
+**Response `400`** — workflow exists but is not yet completed:
+```json
+{ "message": "Workflow is not yet completed" }
+```
+
+**Response `404`** — workflow ID does not exist:
+```json
+{ "message": "Workflow not found" }
+```
+
+**curl example:**
+```bash
+curl http://localhost:3000/api/v1/workflow/3433c76d-f226-4c91-afb5-7dfc7accab24/results
 ```
 
 ---
@@ -368,6 +400,9 @@ WORKFLOW_ID=$(curl -s -X POST http://localhost:3000/api/v1/analysis \
 
 # Poll status (worker processes tasks every 5 s)
 curl http://localhost:3000/api/v1/workflow/$WORKFLOW_ID/status
+
+# Fetch results once completed
+curl http://localhost:3000/api/v1/workflow/$WORKFLOW_ID/results
 
 # Health check
 curl http://localhost:3000/health

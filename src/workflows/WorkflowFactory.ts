@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import fs from 'node:fs';
 import * as yaml from 'js-yaml';
 import { DataSource } from 'typeorm';
 import { Workflow } from '../models/Workflow';
@@ -8,6 +8,7 @@ import { TaskStatus, WorkflowStatus } from '../types';
 interface WorkflowStep {
     taskType: string;
     stepNumber: number;
+    dependsOn?: number;
 }
 
 interface WorkflowDefinition {
@@ -16,7 +17,7 @@ interface WorkflowDefinition {
 }
 
 export class WorkflowFactory {
-    constructor(private dataSource: DataSource) {}
+    constructor(private readonly dataSource: DataSource) {}
 
     /**
      * Creates a workflow by reading a YAML file and constructing the Workflow and Task entities.
@@ -37,7 +38,11 @@ export class WorkflowFactory {
 
         const savedWorkflow = await workflowRepository.save(workflow);
 
-        const tasks: Task[] = workflowDef.steps.map(step => {
+        const sortedSteps = [...workflowDef.steps].sort((a, b) => a.stepNumber - b.stepNumber);
+
+        const stepToTaskId = new Map<number, string>();
+
+        for (const step of sortedSteps) {
             const task = new Task();
             task.clientId = clientId;
             task.geoJson = geoJson;
@@ -45,10 +50,20 @@ export class WorkflowFactory {
             task.taskType = step.taskType;
             task.stepNumber = step.stepNumber;
             task.workflow = savedWorkflow;
-            return task;
-        });
 
-        await taskRepository.save(tasks);
+            if (step.dependsOn !== undefined) {
+                const depTaskId = stepToTaskId.get(step.dependsOn);
+                if (!depTaskId) {
+                    throw new Error(
+                        `Step ${step.stepNumber} declares dependsOn: ${step.dependsOn}, but that step has not been defined (or has a higher stepNumber).`
+                    );
+                }
+                task.dependsOnTaskId = depTaskId;
+            }
+
+            const saved = await taskRepository.save(task);
+            stepToTaskId.set(step.stepNumber, saved.taskId);
+        }
 
         return savedWorkflow;
     }

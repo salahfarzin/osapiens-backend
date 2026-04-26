@@ -8,10 +8,20 @@ export async function taskWorker() {
     const taskRunner = new TaskRunner(taskRepository);
 
     while (true) {
-        const task = await taskRepository.findOne({
-            where: { status: TaskStatus.Queued },
-            relations: ['workflow'] // Ensure workflow is loaded
-        });
+        const task = await taskRepository
+            .createQueryBuilder('task')
+            .leftJoinAndSelect('task.workflow', 'workflow')
+            .where('task.status = :status', { status: TaskStatus.Queued })
+            .andWhere(
+                `(task.dependsOnTaskId IS NULL OR EXISTS (
+                    SELECT 1 FROM tasks dep 
+                    WHERE dep.taskId = task.dependsOnTaskId 
+                    AND dep.status = :completedStatus
+                ))`,
+                { completedStatus: TaskStatus.Completed }
+            )
+            .orderBy('task.stepNumber', 'ASC')
+            .getOne();
 
         if (task) {
             try {

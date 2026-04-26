@@ -1,9 +1,7 @@
 import { ReportGenerationJob } from '../../jobs/ReportGenerationJob';
-import { Task } from '../../models/Task';
 import { Result } from '../../models/Result';
 import { makeTask } from '../helpers/fixtures';
 import { TaskStatus, TaskType } from '../../types';
-import { DataSource } from 'typeorm';
 
 /** Minimal Result-like object returned by the mocked repository. */
 function makeResult(data: string | null, resultId = 'result-uuid'): Pick<Result, 'resultId' | 'taskId' | 'data'> {
@@ -19,23 +17,10 @@ describe('ReportGenerationJob', () => {
         mockTaskRepo = { find: jest.fn() };
         mockResultRepo = { findOne: jest.fn() };
 
-        const mockDataSource = {
-            getRepository: (entity: unknown) => {
-                if (entity === Task) {
-                    return mockTaskRepo;
-                }
-
-                if (entity === Result) {
-                    return mockResultRepo;
-                }
-
-                throw new Error(
-                    `Unexpected entity passed to getRepository: ${typeof entity === 'function' ? entity.name : JSON.stringify(entity)}`,
-                );
-            },
-        } as unknown as DataSource;
-
-        job = new ReportGenerationJob(mockDataSource);
+        job = new ReportGenerationJob(
+            mockTaskRepo as any,
+            mockResultRepo as any,
+        );
     });
 
     describe('completed preceding tasks', () => {

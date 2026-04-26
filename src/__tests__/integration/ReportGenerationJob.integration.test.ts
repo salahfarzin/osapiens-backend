@@ -1,4 +1,6 @@
 import { ReportGenerationJob } from '../../jobs/ReportGenerationJob';
+import { Task } from '../../models/Task';
+import { Result } from '../../models/Result';
 import { TaskStatus, TaskType } from '../../types';
 import { useTestDatabase, getDataSource } from '../helpers/testDb';
 import { seedWorkflow, seedTask, seedResult } from '../helpers/seeds';
@@ -9,7 +11,11 @@ describe('ReportGenerationJob (integration)', () => {
     let job: ReportGenerationJob;
 
     beforeEach(() => {
-        job = new ReportGenerationJob(getDataSource());
+        const ds = getDataSource();
+        job = new ReportGenerationJob(
+            ds.getRepository(Task),
+            ds.getRepository(Result),
+        );
     });
 
     it('returns the workflow ID in the report', async () => {

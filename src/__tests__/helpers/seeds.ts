@@ -3,7 +3,6 @@ import { Task } from '../../models/Task';
 import { Result } from '../../models/Result';
 import { Workflow } from '../../models/Workflow';
 import { TaskStatus, WorkflowStatus, TaskType } from '../../types';
-
 export async function seedWorkflow(
     dataSource: DataSource,
     clientId = 'client-1',
@@ -42,4 +41,8 @@ export async function seedResult(
     );
     await dataSource.getRepository(Task).update(task.taskId, { resultId: saved.resultId });
     return saved;
+}
+
+export function fetchTask(dataSource: DataSource, taskId: string): Promise<Task> {
+    return dataSource.getRepository(Task).findOneOrFail({ where: { taskId }, relations: ['workflow'] });
 }

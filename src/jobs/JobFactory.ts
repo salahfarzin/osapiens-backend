@@ -4,12 +4,18 @@ import { EmailNotificationJob } from './EmailNotificationJob';
 import { PolygonAreaJob } from './PolygonAreaJob';
 import { ReportGenerationJob } from './ReportGenerationJob';
 import { TaskType } from '../types';
+import { AppDataSource } from '../data-source';
+import { Task } from '../models/Task';
+import { Result } from '../models/Result';
 
 const jobMap: Record<string, () => Job> = {
     [TaskType.Analysis]: () => new DataAnalysisJob(),
     [TaskType.Notification]: () => new EmailNotificationJob(),
     [TaskType.PolygonArea]: () => new PolygonAreaJob(),
-    [TaskType.Report]: () => new ReportGenerationJob(),
+    [TaskType.Report]: () => new ReportGenerationJob(
+        AppDataSource.getRepository(Task),
+        AppDataSource.getRepository(Result),
+    ),
 };
 
 export function getJobForTaskType(taskType: string): Job {

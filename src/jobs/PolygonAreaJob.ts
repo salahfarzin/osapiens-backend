@@ -8,10 +8,11 @@ const AREA_UNIT = 'm2';
 export interface PolygonAreaResult {
     area: number;
     unit: typeof AREA_UNIT;
+    previousResult?: unknown;
 }
 
 export class PolygonAreaJob implements Job {
-    async run(task: Task): Promise<PolygonAreaResult> {
+    async run(task: Task, previousResult?: unknown): Promise<PolygonAreaResult> {
         console.log(`Calculating polygon area for task ${task.taskId}...`);
 
         let geoJson: GeoJSON;
@@ -33,6 +34,6 @@ export class PolygonAreaJob implements Job {
 
         console.log(`Polygon area for task ${task.taskId}: ${calculatedArea} ${AREA_UNIT}`);
 
-        return { area: calculatedArea, unit: AREA_UNIT };
+        return { area: calculatedArea, unit: AREA_UNIT, previousResult };
     }
 }

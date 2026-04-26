@@ -24,6 +24,14 @@ module.exports = {
             transform: {
                 '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],
             },
-        },
-    ],
+        },        {
+            displayName: 'e2e',
+            testEnvironment: 'node',
+            roots: ['<rootDir>/src'],
+            testMatch: ['**/__tests__/e2e/**/*.test.ts'],
+            clearMocks: true,
+            transform: {
+                '^.+\.ts$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],
+            },
+        },    ],
 };

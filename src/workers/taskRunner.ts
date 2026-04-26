@@ -8,6 +8,8 @@ import { Result } from '../models/Result';
 export class TaskRunner {
     constructor(
         private readonly taskRepository: Repository<Task>,
+        private readonly resultRepository: Repository<Result>,
+        private readonly workflowRepository: Repository<Workflow>,
     ) {}
 
     /**
@@ -23,12 +25,11 @@ export class TaskRunner {
 
         try {
             console.log(`Starting job ${task.taskType} for task ${task.taskId}...`);
-            const resultRepository = this.taskRepository.manager.getRepository(Result);
 
             // Resolve the output of the dependency task, if one exists.
             let previousResult: unknown;
             if (task.dependsOnTaskId) {
-                const depResult = await resultRepository.findOne({ where: { taskId: task.dependsOnTaskId } });
+                const depResult = await this.resultRepository.findOne({ where: { taskId: task.dependsOnTaskId } });
                 if (depResult?.data) {
                     previousResult = JSON.parse(depResult.data);
                 }
@@ -39,7 +40,7 @@ export class TaskRunner {
             const result = new Result();
             result.taskId = task.taskId!;
             result.data = JSON.stringify(taskResult || {});
-            await resultRepository.save(result);
+            await this.resultRepository.save(result);
             task.resultId = result.resultId!;
             task.status = TaskStatus.Completed;
             task.progress = null;
@@ -55,8 +56,7 @@ export class TaskRunner {
             throw error;
         }
 
-        const workflowRepository = this.taskRepository.manager.getRepository(Workflow);
-        const currentWorkflow = await workflowRepository.findOne({ where: { workflowId: task.workflow.workflowId }, relations: ['tasks'] });
+        const currentWorkflow = await this.workflowRepository.findOne({ where: { workflowId: task.workflow.workflowId }, relations: ['tasks'] });
 
         if (currentWorkflow) {
             const allCompleted = currentWorkflow.tasks.every(t => t.status === TaskStatus.Completed);
@@ -70,7 +70,23 @@ export class TaskRunner {
                 currentWorkflow.status = WorkflowStatus.InProgress;
             }
 
-            await workflowRepository.save(currentWorkflow);
+            if (allCompleted || anyFailed) {
+                const taskOutputs = await Promise.all(
+                    currentWorkflow.tasks.map(async (t) => {
+                        const taskResult = await this.resultRepository.findOne({ where: { taskId: t.taskId } });
+                        return {
+                            taskId: t.taskId,
+                            taskType: t.taskType,
+                            stepNumber: t.stepNumber,
+                            status: t.status,
+                            output: taskResult?.data ? JSON.parse(taskResult.data) : null,
+                        };
+                    })
+                );
+                currentWorkflow.finalResult = JSON.stringify({ tasks: taskOutputs });
+            }
+
+            await this.workflowRepository.save(currentWorkflow);
         }
     }
 }

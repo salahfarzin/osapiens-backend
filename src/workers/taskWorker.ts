@@ -1,11 +1,17 @@
 import {AppDataSource} from '../data-source';
 import {Task} from '../models/Task';
+import { Result } from '../models/Result';
+import { Workflow } from '../models/Workflow';
 import { TaskRunner } from './taskRunner';
 import { TaskStatus } from '../types';
 
 export async function taskWorker() {
     const taskRepository = AppDataSource.getRepository(Task);
-    const taskRunner = new TaskRunner(taskRepository);
+    const taskRunner = new TaskRunner(
+        taskRepository,
+        AppDataSource.getRepository(Result),
+        AppDataSource.getRepository(Workflow),
+    );
 
     while (true) {
         const task = await taskRepository

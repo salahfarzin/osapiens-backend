@@ -1,6 +1,6 @@
 import express from "express";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import { marked } from "marked";
 
 const router = express.Router();
@@ -9,13 +9,13 @@ router.use("/public", express.static(staticPath));
 
 router.get("/", (req, res) => {
   const readmePath = path.join(__dirname, "../..", "README.md");
-  fs.readFile(readmePath, "utf8", (err, data) => {
+  fs.readFile(readmePath, "utf8", async (err, data) => {
     if (err) {
       console.error("Error reading README.md:", err);
       return res.status(500).send("Error loading README.md");
     }
 
-    const htmlContent = marked(data);
+    const htmlContent = await marked(data);
 
     // Add CSS for dark mode and image resizing
     const styledHtml = `

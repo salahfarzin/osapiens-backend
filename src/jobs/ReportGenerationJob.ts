@@ -1,9 +1,8 @@
 import type { Job } from './Job';
 import { Task } from '../models/Task';
 import { Result } from '../models/Result';
-import { AppDataSource } from '../data-source';
 import { TaskStatus } from '../types';
-import { DataSource } from 'typeorm';
+import { Repository } from 'typeorm';
 
 export interface TaskReport {
     taskId: string;
@@ -18,20 +17,21 @@ export interface Report {
 }
 
 export class ReportGenerationJob implements Job {
-    private readonly dataSource: DataSource;
+    private readonly taskRepository: Repository<Task>;
+    private readonly resultRepository: Repository<Result>;
 
-    constructor(dataSource: DataSource = AppDataSource) {
-        this.dataSource = dataSource;
+    constructor(
+        taskRepository: Repository<Task>,
+        resultRepository: Repository<Result>,
+    ) {
+        this.taskRepository = taskRepository;
+        this.resultRepository = resultRepository;
     }
 
-    async run(task: Task): Promise<Report> {
+    async run(task: Task, _previousResult?: unknown): Promise<Report> {
         console.log(`Generating report for workflow ${task.workflow.workflowId}...`);
 
-        const taskRepository = this.dataSource.getRepository(Task);
-        const resultRepository = this.dataSource.getRepository(Result);
-
-        // Fetch all tasks for this workflow ordered by step, excluding the current task
-        const workflowTasks = await taskRepository.find({
+        const workflowTasks = await this.taskRepository.find({
             where: { workflow: { workflowId: task.workflow.workflowId } },
             order: { stepNumber: 'ASC' },
         });
@@ -46,7 +46,7 @@ export class ReportGenerationJob implements Job {
                 let output: unknown = null;
 
                 if (t.resultId != null) {
-                    const result = await resultRepository.findOne({
+                    const result = await this.resultRepository.findOne({
                         where: { resultId: t.resultId },
                     });
 

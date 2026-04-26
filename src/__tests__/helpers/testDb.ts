@@ -26,8 +26,8 @@ export function useTestDatabase(): void {
     });
 
     afterEach(async () => {
-        await dataSource.getRepository(Result).delete({});
-        await dataSource.getRepository(Task).delete({});
-        await dataSource.getRepository(Workflow).delete({});
+        await dataSource.getRepository(Result).clear();
+        await dataSource.getRepository(Task).clear();
+        await dataSource.getRepository(Workflow).clear();
     });
 }
